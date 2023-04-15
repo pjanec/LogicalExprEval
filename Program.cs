@@ -1,3 +1,4 @@
+
 namespace LogicalExprEval
 {
 	internal static class Program
@@ -53,6 +54,11 @@ namespace LogicalExprEval
 			Test( expr, 3 );
 			Test( expr, "nazdar" );
 			Test( expr, null );
+
+			var app = new GuiApp();
+			app.run();
+			app.Dispose();
+
 		}
 
 		static void Test( ILogicalExpression expr, object arg )
