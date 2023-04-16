@@ -10,9 +10,10 @@ using System.Threading.Tasks;
 namespace LogicalExprEval
 {
 	/// <summary>
-	///   Compares the stored value to the value of the argument.
+	///   Compares the stored value to the value of the argument of Evaluate() method
+	///   using selected comparison operator. Optionally performs the negation of the result.
 	/// </summary>
-	public class Condition : ILogicalExpression
+	public class Condition : IFilter
 	{
 		public enum EOperator
 		{
@@ -28,17 +29,23 @@ namespace LogicalExprEval
 		}
 
 
-		public TypeCode ValueType;
+		/// <summary> Type of the refernce value </summary>
+		public System.Type ValueType;
+		
+		/// <summary> Reference value compared with the arg of Evaluate(arg) </summary>
 		public object Value;
+
 		public EOperator Operator;
+		
+		/// <summary> Shall we negate the result of the operator comparison </summary>
 		public bool Negate;
 
-		public Condition( TypeCode valueTypeCode = TypeCode.Empty, EOperator oper = EOperator.Equal )
+		public Condition( System.Type valueType = null, EOperator oper = EOperator.Equal )
 		{
-			this.ValueType = valueTypeCode;
+			this.ValueType = valueType;
 
-			System.Type type = Type.GetType("System." + valueTypeCode);
-			if( type.IsValueType )
+			System.Type type = Type.GetType("System." + valueType);
+			if( type != null && type.IsValueType )
 			{
 				this.Value = Activator.CreateInstance(type);
 			}
@@ -112,7 +119,12 @@ namespace LogicalExprEval
 			return text;
 		}
 
-		public bool Evaluate(object arg)
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="arg">value to compare using the contition's operator and stored reference value</param>
+		/// <returns></returns>
+		public bool Passed(object arg)
 		{
 			bool result = false;
 			var compArg = (arg as IComparable);

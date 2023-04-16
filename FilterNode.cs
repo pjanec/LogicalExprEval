@@ -2,7 +2,13 @@
 
 namespace LogicalExprEval
 {
-	public class FilterNode	: ILogicalExpression
+	/// <summary>
+	///   A node of a logical expression tree combining multiple filter conditions using AND/OR operators.
+	/// </summary>
+	/// <remarks>
+	///   Note: each node can be individually negated => we do not need the negation operator.
+	/// </remarks>
+	public class FilterNode	: IFilter
 	{
 		public enum EType
 		{
@@ -21,11 +27,9 @@ namespace LogicalExprEval
 
 		public string Uuid = Guid.NewGuid().ToString();
 
+		// Changes made during prev Draw() call that can't be executed immediately 
+		// because they would throw 'collection modified' when iterating the child node collection.
 		public List<Action> DeferredChanges = new List<Action>();
-
-		public FilterNode()
-		{
-		}
 
 		public override string ToString()
 		{
@@ -63,7 +67,7 @@ namespace LogicalExprEval
 
 		}
 
-		public bool Evaluate( object arg )
+		public bool Passed( object arg )
 		{
 			switch( NodeType )
 			{
@@ -81,7 +85,7 @@ namespace LogicalExprEval
 		{
 			var var1 = VariableList.FirstOrDefault( x => x.Id == VariableId );
 			object val = var1?.Value;
-			return Condition.Evaluate( val );
+			return Condition.Passed( val );
 		}
 
 
@@ -92,7 +96,7 @@ namespace LogicalExprEval
 			{
 				foreach( var item in Children)
 				{
-					result = result && item.Evaluate( arg );
+					result = result && item.Passed( arg );
 				}
 			}
 			return result;
@@ -105,7 +109,7 @@ namespace LogicalExprEval
 			{
 				foreach( var item in Children)
 				{
-					result = result || item.Evaluate( arg );
+					result = result || item.Passed( arg );
 				}
 			}
 			return result;

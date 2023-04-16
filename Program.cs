@@ -40,7 +40,7 @@ namespace LogicalExprEval
 				Negate = true
 			};
 
-			var expr = new LogicalExpressionOr( new List<ILogicalExpression>()
+			var expr = new OrFilterContainer( new List<IFilter>()
 			{
 				equalsOne,
 				greaterThan3
@@ -61,10 +61,10 @@ namespace LogicalExprEval
 
 		}
 
-		static void Test( ILogicalExpression expr, object arg )
+		static void Test( IFilter expr, object arg )
 		{
 			Console.WriteLine( "----------------------");
-			var result = expr.Evaluate( arg );
+			var result = expr.Passed( arg );
 			Console.WriteLine( "Describe: " + expr.Describe( Condition.Describe(arg) ) );
 			Console.WriteLine( "Result: " + result );
 		}

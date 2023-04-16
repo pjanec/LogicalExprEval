@@ -6,31 +6,40 @@ using System.Threading.Tasks;
 
 namespace LogicalExprEval
 {
-	public interface ILogicalExpression
+	public interface IFilter
 	{
-		bool Evaluate( object arg );
+		/// <summary>
+		///    Checks if given value passes the filter
+		/// </summary>
+		/// <param name="arg"> the value passed to the condition of the filter </param>
+		/// <returns> true = the arg value passed the filter condition </returns>
+		bool Passed( object arg );
+
+		/// <summary> Provides human readable form of the filter expression </summary>
+		/// <param name="argDescr"> the text used in place of the variable whose value is passed to Evalute() </param>
+		/// <returns></returns>
 		string Describe( string argDescr );
 	}
 
-	public class LogicalExpressionAnd : ILogicalExpression
+	public class AndFilterContainer : IFilter
 	{
-		List<ILogicalExpression> _list;
+		List<IFilter> _list;
 
-		public LogicalExpressionAnd(List<ILogicalExpression> list)
+		public AndFilterContainer(List<IFilter> list)
 		{
 			_list = list;
 		}
 
 		public override string ToString() => Describe("x");
 
-		public bool Evaluate( object arg )
+		public bool Passed( object arg )
 		{
 			bool result = true;
 			if( _list != null)
 			{
 				foreach( var item in _list)
 				{
-					result = result && item.Evaluate( arg );
+					result = result && item.Passed( arg );
 				}
 			}
 			return result;
@@ -54,25 +63,25 @@ namespace LogicalExprEval
 		}
 	}
 
-	public class LogicalExpressionOr : ILogicalExpression
+	public class OrFilterContainer : IFilter
 	{
-		List<ILogicalExpression> _list;
+		List<IFilter> _list;
 
-		public LogicalExpressionOr(List<ILogicalExpression> list)
+		public OrFilterContainer(List<IFilter> list)
 		{
 			_list = list;
 		}
 
 		public override string ToString() => Describe("x");
 
-		public bool Evaluate( object arg )
+		public bool Passed( object arg )
 		{
 			bool result = false;
 			if( _list != null)
 			{
 				foreach( var item in _list)
 				{
-					result = result || item.Evaluate( arg );
+					result = result || item.Passed( arg );
 				}
 			}
 			return result;

@@ -26,10 +26,10 @@ namespace LogicalExprEval
 					
 			_vars = new List<IVariable>()
 			{
-				new Variable( "var1", "Variable1_str", TypeCode.String, "hello" ),
-				new Variable( "var2", "Variable2_int", TypeCode.Int64, 42 ),
+				new Variable( "var1", "Variable1_str", typeof(String), "hello" ),
+				new Variable( "var2", "Variable2_int", typeof(Int64), 42 ),
 			};
-			_rootFN = new FilterNode( FilterNode.EType.Leaf, _vars[0].Id, _vars, new Condition( TypeCode.String ) );
+			_rootFN = new FilterNode( FilterNode.EType.Leaf, _vars[0].Id, _vars, new Condition( typeof(String) ) );
 		}
 
 		protected override void Dispose(bool disposing)
@@ -66,7 +66,7 @@ namespace LogicalExprEval
 			ImGui.Text($"Descr: {descr}" );
 			
 			
-			var result = _rootFN.Evaluate(null);
+			var result = _rootFN.Passed(null);
 			ImGui.Text($"Result: {result}" );
 		}
 		

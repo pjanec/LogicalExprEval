@@ -4,7 +4,7 @@
 	{
 		string Id { get; }
 		string DisplayName { get; }
-		TypeCode TypeCode { get; }
+		System.Type Type { get; }
 		object Value { get; }
 	}
 
@@ -13,14 +13,14 @@
 	{
 		public string Id { get; set; }
 		public string DisplayName { get; set; }
-		public TypeCode TypeCode { get; set; }
+		public Type Type { get; set; }
 		public object Value { get; set; }
 
-		public Variable( string id, string displayName, TypeCode typeCode, object value )
+		public Variable( string id, string displayName, System.Type type, object value )
 		{
 			Id = id;
 			DisplayName = displayName;
-			TypeCode = typeCode;
+			Type = type;
 			Value = value;
 		}
 	}

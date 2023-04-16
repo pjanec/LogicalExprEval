@@ -193,7 +193,7 @@ namespace LogicalExprEval
 					{
 						node.VariableId = v.Id;
 						// retype the value stored in the condition to match the new variable type
-						node.Condition.ValueType = v.TypeCode;
+						node.Condition.ValueType = v.Type;
 					}
 				}
 				ImGui.EndCombo();
