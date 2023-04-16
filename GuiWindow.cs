@@ -29,7 +29,7 @@ namespace LogicalExprEval
 				new Variable( "var1", "Variable1_str", typeof(String), "hello" ),
 				new Variable( "var2", "Variable2_int", typeof(Int64), 42 ),
 			};
-			_rootFN = new FilterNode( FilterNode.EType.Leaf, _vars[0].Id, _vars, new Condition( typeof(String) ) );
+			_rootFN = new FilterNode( FilterNode.EType.Leaf, -1, _vars, new Condition( typeof(String) ) );
 		}
 
 		protected override void Dispose(bool disposing)
@@ -60,7 +60,7 @@ namespace LogicalExprEval
 			}
 
 
-			ExprTreeImGuiRenderer.Draw( _rootFN );
+			FilterNodeRenderer.Draw( _rootFN );
 
 			var descr = _rootFN.Describe(null);
 			ImGui.Text($"Descr: {descr}" );

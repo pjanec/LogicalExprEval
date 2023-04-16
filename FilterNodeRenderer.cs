@@ -11,7 +11,7 @@ using ImGuiNET;
 namespace LogicalExprEval
 {
 
-	public static class ExprTreeImGuiRenderer
+	public static class FilterNodeRenderer
 	{
 		public static void Draw( FilterNode node )
 		{
@@ -26,48 +26,51 @@ namespace LogicalExprEval
 
 			if( node.NodeType == FilterNode.EType.Leaf )
 			{
+				// variable name combo
 				DrawVar( node );
 
+				// condition operator & reference value
 				ImGui.SameLine();
-
-				ConditionImGuiRendeder.Draw( node.Condition, ww/3 );	
-				ImGui.SameLine();
-
-				// remove button
-				if( !IsOnlyChild( node ) )
-				{
-					if( ImGui.Button( "X" ) )
-					{
-						RemoveLeaf( node );
-					}
-
-					ImGui.SameLine();
-				}
+				ConditionRendeder.Draw( node.Condition, ww/3 );	
 
 				// allow adding just inside AND/OR branch; there always is at least one node
 				if( node.NodeType==FilterNode.EType.Leaf && node.Parent != null )
 				{
+					ImGui.SameLine();
 					if( ImGui.Button( "+" ) )
 					{
 						AddNewSiblingLeaf( node );
 					}
-					ImGui.SameLine();
 				}
 
-				// convert the node into a new AND branch with the node as the first child
+				// add a new node using the AND condition
+				// this converts the node into a new AND branch with the original node as the first child
+				ImGui.SameLine();
 				if( ImGui.Button( "&&" ) )
 				{
 					var newLeaf = ConvertLeafIntoBranch( node, FilterNode.EType.And );
 					AddNewSiblingLeaf( newLeaf );
 				}
 
-				ImGui.SameLine();
 
+				// add a new node using the OR condition
 				// convert the node into a new OR branch with the node as the first child
+				ImGui.SameLine();
 				if( ImGui.Button( "||" ) )
 				{
 					var newLeaf = ConvertLeafIntoBranch( node, FilterNode.EType.Or );
 					AddNewSiblingLeaf( newLeaf );
+				}
+
+				// remove the node
+				// if there is just one left in the branch, remove the branch and replace it with the remaining node
+				if( !IsOnlyChild( node ) )
+				{
+					ImGui.SameLine();
+					if( ImGui.Button( "X" ) )
+					{
+						RemoveLeaf( node );
+					}
 				}
 
 			}
@@ -77,7 +80,6 @@ namespace LogicalExprEval
 
 				if( opened )
 				{
-					//var childrenCopy = new List<FilterNode>(node.Children);
 					foreach( var child in node.Children )
 					{
 						Draw( child ); // warnign this can change node.Children as well as node.Parent
@@ -110,7 +112,7 @@ namespace LogicalExprEval
 			if( parent == null ) return;
 
 			// creates a new leaf and adds it to the node's children
-			var newChild = new FilterNode( FilterNode.EType.Leaf, node.VariableId, node.VariableList, new Condition(), parent);
+			var newChild = new FilterNode( FilterNode.EType.Leaf, node.VarIndex, node.Variables, new Condition(), parent);
 
 			var index = parent.Children.IndexOf( node );
 			
@@ -167,13 +169,13 @@ namespace LogicalExprEval
 
 		static FilterNode ConvertLeafIntoBranch( FilterNode node, FilterNode.EType newBranchType )
 		{
-			var newChild = new FilterNode( node.NodeType, node.VariableId, node.VariableList, node.Condition, node );
+			var newChild = new FilterNode( node.NodeType, node.VarIndex, node.Variables, node.Condition, node );
 
 			// convert the node into a new branch with the node as the first child
 			node.NodeType = newBranchType;
 			node.Children = new List<FilterNode>() { newChild };
 			node.Condition = null;
-			node.VariableId = null;
+			node.VarIndex = -1;
 
 			return newChild;
 
@@ -181,17 +183,18 @@ namespace LogicalExprEval
 
 		static void DrawVar( FilterNode node )
 		{
-			var selectedVar = node.VariableList.FirstOrDefault( x => x.Id == node.VariableId );
+			IVariable selectedVar = node.VarIndex < 0 ? null : node.Variables[node.VarIndex];
 			var preview = selectedVar == null ? "<none>" : selectedVar.DisplayName;
 			var ww = ImGui.GetWindowWidth();
 			ImGui.SetNextItemWidth(ww/3);
 			if( ImGui.BeginCombo( "##var", preview ) )
 			{
-				foreach( var v in node.VariableList )
+				for( int i=0; i < node.Variables.Count; ++i )
 				{
-					if( ImGui.Selectable( v.DisplayName, selectedVar==null ? false : selectedVar.Id == v.Id ) )
+					var v = node.Variables[i];
+					if( ImGui.Selectable( v.DisplayName, i == node.VarIndex ) )
 					{
-						node.VariableId = v.Id;
+						node.VarIndex = i;
 						// retype the value stored in the condition to match the new variable type
 						node.Condition.ValueType = v.Type;
 					}

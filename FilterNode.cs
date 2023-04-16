@@ -12,19 +12,25 @@ namespace LogicalExprEval
 	{
 		public enum EType
 		{
-			Leaf, // no subitems, just Field - operator - value
-			And,
-			Or
+			Leaf, // no children, just [variable - operator - refval]
+			And, // AND branch (all subconditions must pass); at least two children always
+			Or	 // OR branch (at least one subcondition must pass); at least two children always
 		}
 
 		public EType NodeType;
-		public string VariableId; // where to get the value from
+		public FilterNode Parent;
+		public List<FilterNode> Children; // subnodes, used for 
+		
+		public int VarIndex; // what variable to read the current value from; index to Variables
 		public Condition Condition; // how to compare the variable value
 
-		public FilterNode Parent;
-		public List<FilterNode> Children;
-		public List<IVariable> VariableList;
+		
+		/// <summary>
+		///   All variables available for selection in the filter condition.
+		/// </summary>
+		public List<IVariable> Variables;
 
+		// ImGui needs a unique ID for each node
 		public string Uuid = Guid.NewGuid().ToString();
 
 		// Changes made during prev Draw() call that can't be executed immediately 
@@ -36,27 +42,30 @@ namespace LogicalExprEval
 			return $"[{NodeType}] {Describe(null)}";
 		}
 
-		public FilterNode( EType nodeType, string varId, List<IVariable> varList, Condition condition, FilterNode parent=null )
+		public FilterNode( EType nodeType, int varIndex, List<IVariable> varList, Condition condition, FilterNode parent=null )
 		{
 			NodeType = nodeType;
-			VariableId = varId;
-			VariableList = varList;
+			VarIndex = varIndex;
+			Variables = varList;
 			Condition = condition;
 			Parent = parent;
 			Children = null;
 		}
 
+		/// <summary>
+		///  Turns this node into a copy of the other node; The other node is expected to be abandoned.
+		/// </summary>
 		public void InitFrom( FilterNode other )
 		{
 			NodeType = other.NodeType;
-			VariableId = other.VariableId;
-			VariableList = other.VariableList;
+			VarIndex = other.VarIndex;
+			Variables = other.Variables;
 			Condition = other.Condition;
 			Parent = other.Parent;
 			Children = other.Children;
 			DeferredChanges = other.DeferredChanges;
 
-			// reparent the bewly acquired children to us
+			// reparent the newly acquired children to us
 			if( Children != null )
 			{
 				foreach( var child in Children )
@@ -67,70 +76,84 @@ namespace LogicalExprEval
 
 		}
 
-		public bool Passed( object arg )
+		// implementation of the IFilter interface
+		public bool Passed( object notUsed )
+		{
+			// as we take our value from the variable, we do not need the arg
+			return Passed();
+		}
+
+		public bool Passed()
 		{
 			switch( NodeType )
 			{
 				case EType.Leaf:
-					return EvalLeaf( arg );
+					return EvalLeaf();
 				case EType.And:
-					return EvalAnd( arg );
+					return EvalAnd();
 				case EType.Or:
-					return EvalOr( arg );
+					return EvalOr();
 			}
 			throw new Exception("Unknown node type");
 		}
 
-		bool EvalLeaf( object arg )
+		bool EvalLeaf()
 		{
-			var var1 = VariableList.FirstOrDefault( x => x.Id == VariableId );
-			object val = var1?.Value;
+			object val = VarIndex < 0 ? null : Variables[VarIndex].Value;
 			return Condition.Passed( val );
 		}
 
 
-		bool EvalAnd( object arg )
+		bool EvalAnd()
 		{
 			bool result = true;
 			if( Children != null)
 			{
 				foreach( var item in Children)
 				{
-					result = result && item.Passed( arg );
+					result = result && item.Passed();
 				}
 			}
 			return result;
 		}
 
-		bool EvalOr( object arg )
+		bool EvalOr()
 		{
 			bool result = false;
 			if( Children != null)
 			{
 				foreach( var item in Children)
 				{
-					result = result || item.Passed( arg );
+					result = result || item.Passed();
 				}
 			}
 			return result;
 		}
 
 
+		// implementation of the IFilter interface
 		public string Describe( string argDescr )
 		{
 			switch( NodeType )
 			{
 				case EType.Leaf:
-					return Condition.Describe( VarName );
+				{
+					string varName = VarIndex < 0 ? "<none>" : Variables[VarIndex].DisplayName;
+					return Condition.Describe( varName );
+				}
 				case EType.And:
+				{
 					return Describe( argDescr, "AND" );
+				}
 				case EType.Or:
+				{
 					return Describe( argDescr, "OR" );
+				}
 			}
 			throw new Exception("Unknown node type");
 		}
 
-		public string Describe( string argDescr, string operName )
+		string Describe( string argDescr, string operName )
 		{
 			string result = "";
 			if( Children != null)
@@ -146,12 +169,6 @@ namespace LogicalExprEval
 			}
 			return result;
 		}
-
-		string VarName { get
-		{
-			var var1 = VariableList.FirstOrDefault( x => x.Id == VariableId );
-			return var1?.DisplayName ?? "<none>";
-		}}
 
 	}
 }

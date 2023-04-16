@@ -4,7 +4,7 @@ using Newtonsoft.Json.Linq;
 
 namespace LogicalExprEval
 {
-	public static class ConditionImGuiRendeder
+	public static class ConditionRendeder
 	{
 		public static void Draw( Condition vc, float width )
 		{
