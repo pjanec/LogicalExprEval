@@ -167,7 +167,7 @@ namespace LogicalExprEval
 		/// </summary>
 		public IntPtr GetOrCreateImGuiBinding(ResourceFactory factory, Texture texture)
 		{
-			if (!_autoViewsByTexture.TryGetValue(texture, out TextureView? textureView))
+			if (!_autoViewsByTexture.TryGetValue(texture, out TextureView textureView))
 			{
 				textureView = factory.CreateTextureView(texture);
 				_autoViewsByTexture.Add(texture, textureView);

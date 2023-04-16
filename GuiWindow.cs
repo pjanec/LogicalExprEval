@@ -14,15 +14,22 @@ namespace LogicalExprEval
 	{
 		public bool HasMenu => true;
 
-		private string _uniqueUiId = Guid.NewGuid().ToString();
 		private ImGuiWindow _wnd;
-		private ImageInfo _txKillAll;
-		string _rootForRelativePaths;
+
+		FilterNode _rootFN;
+		List<IVariable> _vars;
 
 		public GuiWindow( ImGuiWindow wnd )
 		{
 			_wnd = wnd;
 			//_menuRenderer = new GuiWinMenuRenderer( _wnd, _reflStates );
+					
+			_vars = new List<IVariable>()
+			{
+				new Variable( "var1", "Variable1_str", TypeCode.String, "hello" ),
+				new Variable( "var2", "Variable2_int", TypeCode.Int64, 42 ),
+			};
+			_rootFN = new FilterNode( FilterNode.EType.Leaf, _vars[0].Id, _vars, new Condition( TypeCode.String ) );
 		}
 
 		protected override void Dispose(bool disposing)
@@ -34,6 +41,7 @@ namespace LogicalExprEval
 		{
 		}
 
+		
 		public void DrawUI()
 		{
 
@@ -50,6 +58,16 @@ namespace LogicalExprEval
 				}
 				ImGui.EndTabBar();
 			}
+
+
+			ExprTreeImGuiRenderer.Draw( _rootFN );
+
+			var descr = _rootFN.Describe(null);
+			ImGui.Text($"Descr: {descr}" );
+			
+			
+			var result = _rootFN.Evaluate(null);
+			ImGui.Text($"Result: {result}" );
 		}
 		
 

@@ -14,28 +14,28 @@ namespace LogicalExprEval
 			//ApplicationConfiguration.Initialize();
 			//Application.Run( new Form1() );
 
-			var equalsNull = new ValueComparer()
+			var equalsNull = new Condition()
 			{
-				Operator = EOperator.Equal,
+				Operator = Condition.EOperator.Equal,
 				Value = null
 			};
 
-			var notEqualsNullNegated = new ValueComparer()
+			var notEqualsNullNegated = new Condition()
 			{
-				Operator = EOperator.NotEqual,
+				Operator = Condition.EOperator.NotEqual,
 				Value = null,
 				Negate = true
 			};
 
-			var equalsOne = new ValueComparer()
+			var equalsOne = new Condition()
 			{
-				Operator = EOperator.Equal,
+				Operator = Condition.EOperator.Equal,
 				Value = 1
 			};
 
-			var greaterThan3 = new ValueComparer()
+			var greaterThan3 = new Condition()
 			{
-				Operator = EOperator.GreaterThanOrEqual,
+				Operator = Condition.EOperator.GreaterThanOrEqual,
 				Value = 3,
 				Negate = true
 			};
@@ -65,7 +65,7 @@ namespace LogicalExprEval
 		{
 			Console.WriteLine( "----------------------");
 			var result = expr.Evaluate( arg );
-			Console.WriteLine( "Describe: " + expr.Describe( ValueComparer.Describe(arg) ) );
+			Console.WriteLine( "Describe: " + expr.Describe( Condition.Describe(arg) ) );
 			Console.WriteLine( "Result: " + result );
 		}
 	}

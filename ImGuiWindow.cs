@@ -44,7 +44,7 @@ namespace LogicalExprEval
 		/// Register your ImGui render methods here
 		/// </summary>
 		public delegate void DrawUIDelegate();
-		public event DrawUIDelegate? OnDrawUI;
+		public event DrawUIDelegate OnDrawUI;
 
 		///// <summary>
 		///// Just a handy flag not used by the window

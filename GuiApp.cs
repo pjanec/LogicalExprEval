@@ -14,11 +14,11 @@ namespace LogicalExprEval
 	{
 		private ImGuiWindow _wnd;
 		private string _uniqueUiId = Guid.NewGuid().ToString();
-		private GuiWindow? _guiWin;
+		private GuiWindow _guiWin;
 
 		public GuiApp()
 		{
-			_wnd = new ImGuiWindow("Dirigent Gui", width:400, height:650);
+			_wnd = new ImGuiWindow("Dirigent Gui", width:800, height:650);
 			_wnd.OnDrawUI += DrawUI;
 
 			_guiWin = new GuiWindow( _wnd );

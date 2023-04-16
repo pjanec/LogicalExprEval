@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Microsoft.VisualBasic;
+using System;
+using System.CodeDom;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,26 +9,42 @@ using System.Threading.Tasks;
 
 namespace LogicalExprEval
 {
-	public enum EOperator
+	/// <summary>
+	///   Compares the stored value to the value of the argument.
+	/// </summary>
+	public class Condition : ILogicalExpression
 	{
-		Equal,
-		NotEqual,
-		GreaterThan,
-		GreaterThanOrEqual,
-		LessThan,
-		LessThanOrEqual,
-		StartsWith,
-		EndsWith,
-		Contains,
-		Between // inclusive; Value <= value <= Value2
-	}
+		public enum EOperator
+		{
+			Equal,
+			NotEqual,
+			GreaterThan,
+			GreaterThanOrEqual,
+			LessThan,
+			LessThanOrEqual,
+			StartsWith,
+			EndsWith,
+			Contains,
+		}
 
-	public class ValueComparer : ILogicalExpression
-	{
+
+		public TypeCode ValueType;
 		public object Value;
-		public object Value2;
 		public EOperator Operator;
 		public bool Negate;
+
+		public Condition( TypeCode valueTypeCode = TypeCode.Empty, EOperator oper = EOperator.Equal )
+		{
+			this.ValueType = valueTypeCode;
+
+			System.Type type = Type.GetType("System." + valueTypeCode);
+			if( type.IsValueType )
+			{
+				this.Value = Activator.CreateInstance(type);
+			}
+
+			this.Operator = oper;
+		}
 
 		public override string ToString()
 		{
@@ -89,9 +107,6 @@ namespace LogicalExprEval
 				case EOperator.Contains:
 					text = $"{argDesc} contains {Describe(Value)}";
 					break;
-				case EOperator.Between:
-					text = $"{argDesc} is between {Describe(Value)} and {Describe(Value2)}";
-					break;
 			}
 			if( Negate ) text = $"!({text})";
 			return text;
@@ -113,9 +128,18 @@ namespace LogicalExprEval
 			if( arg == null || Value == null )
 				return false;
 
-			// different types => not equal
+			// different types => try retyping
 			if( arg != null && Value != null && arg.GetType() != Value.GetType() )
-				return false;
+			{
+				try
+				{
+					arg = Convert.ChangeType( arg, Value.GetType() );
+				}
+				catch( Exception )
+				{
+					return false;
+				}
+			}
 
 			if( compArg == null )
 				return false;
@@ -152,8 +176,8 @@ namespace LogicalExprEval
 
 				case EOperator.StartsWith:
 				{
-					var stringArg = (arg as string);
-					var stringValue = (Value as string);
+					var stringArg = (string) Convert.ChangeType( arg, TypeCode.String );
+					var stringValue = (string) Convert.ChangeType( Value, TypeCode.String );
 					if( stringArg != null && stringValue != null  )
 					{
 						result = stringArg.StartsWith( stringValue );
@@ -163,8 +187,8 @@ namespace LogicalExprEval
 
 				case EOperator.EndsWith:
 				{
-					var stringArg = (arg as string);
-					var stringValue = (Value as string);
+					var stringArg = (string) Convert.ChangeType( arg, TypeCode.String );
+					var stringValue = (string) Convert.ChangeType( Value, TypeCode.String );
 					if( stringArg != null && stringValue != null  )
 					{
 						result = stringArg.EndsWith( stringValue );
@@ -174,15 +198,12 @@ namespace LogicalExprEval
 
 				case EOperator.Contains:
 				{
-					var stringArg = (arg as string);
-					var stringValue = (Value as string);
-					result = stringArg.Contains( stringValue );
-					break;
-				}
-
-				case EOperator.Between:
-				{
-					result = compArg.CompareTo( Value ) >= 0 && compArg.CompareTo( Value2 ) <= 0;
+					var stringArg = (string) Convert.ChangeType( arg, TypeCode.String );
+					var stringValue = (string) Convert.ChangeType( Value, TypeCode.String );
+					if( stringArg != null && stringValue != null  )
+					{
+						result = stringArg.Contains( stringValue );
+					}
 					break;
 				}
 			}
