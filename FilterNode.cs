@@ -11,6 +11,14 @@ namespace LogicalExprEval
 	/// </summary>
 	/// <remarks>
 	///   Note: Each node can be individually negated => we do not need the negation operator.
+
+	///   Some changes to the tree structure can't be executed immediately, because they would
+	///   break the children iteration if done from within the iteration. Instead, they are deferred
+	///   to later. You need to call ExecuteDeferredChanges() to execute them before any other changes.
+	///   
+	///   Up to one tree change operation shall be made during a single loop over Children
+	///   (like for example if drawing the UI using ImGui). Call ExecuteDeferredChanges
+	///   before repeating the loop to make sure the change is properly applied.
 	/// </remarks>
 	public class FilterNode : IFilter
 	{
@@ -46,32 +54,32 @@ namespace LogicalExprEval
 			return $"[{NodeType}] {Describe(null)}";
 		}
 
-		protected FilterNode( EType nodeType, List<IVariable> varList, int varIndex, Condition condition, FilterNode parent )
+		protected FilterNode( EType nodeType, List<IVariable> varList, int varIndex, Condition condition, FilterNode parent, List<FilterNode> children, List<Action> deferredChanges )
 		{
 			NodeType = nodeType;
 			VarIndex = varIndex;
 			Variables = varList;
 			Condition = condition;
 			Parent = parent;
-			Children = null;
-			//DeferredChanges = deferredChanges;
+			Children = children;
+			DeferredChanges = deferredChanges ?? new List<Action>();
 		}
 
 		/// <summary>
 		///   Creates And/Or node
 		/// </summary>
 		public FilterNode( EType nodeType, List<IVariable> varList )
-			: this( nodeType, varList, -1, null, null )
+			: this( nodeType, varList, -1, null, null, null, null )
 		{
 			if( nodeType == EType.Leaf )
 				throw new ArgumentException( "This ctor is just for And/Or nodes, not the Leaf" );
 		}
 
 		/// <summary>
-		///   Creates leaf node
+		///   Creates leaf node for given variable
 		/// </summary>
 		public FilterNode( List<IVariable> varList, int varIndex, Condition.EOperator oper=Condition.EOperator.Equal, object value=null, bool negate=false )
-			: this( EType.Leaf, varList, varIndex, new Condition( varList[varIndex].Type, oper, value ), null )
+			: this( EType.Leaf, varList, varIndex, new Condition( varList[varIndex].Type, oper, value ), null, null, null )
 		{
 		}
 
@@ -79,7 +87,7 @@ namespace LogicalExprEval
 		///   Shallow clone
 		/// </summary>
 		protected FilterNode( FilterNode other )
-			: this( other.NodeType, other.Variables, other.VarIndex, other.Condition, other.Parent )
+			: this( other.NodeType, other.Variables, other.VarIndex, other.Condition, other.Parent, other.Children, other.DeferredChanges )
 		{
 		}
 
@@ -171,6 +179,11 @@ namespace LogicalExprEval
 			return result;
 		}
 
+		/// <summary>
+		///   Performs changes collected during recent tree change operation.
+		///   Call this after any changes to the tree structure to apply them.
+		///   Chnages are deferred because they can happen from within iteration of children - which would throw 'collection modified'.
+		/// </summary>
 		public void ExecuteDeferredChanges()
 		{
 			foreach (var action in DeferredChanges)
@@ -215,7 +228,7 @@ namespace LogicalExprEval
 		/// <summary>
 		///  Turns this node into a copy of the other node; The other node is expected to be abandoned.
 		/// </summary>
-		protected void InitFrom( FilterNode other )
+		protected void ReincarnateFrom( FilterNode other )
 		{
 			ShallowCopyFrom( other );
 
@@ -235,8 +248,8 @@ namespace LogicalExprEval
 		///		(basically inserts a branch node above this one)
 		/// </summary>
 		/// <param name="newBranchType">AND/OR node</param>
-		/// <returns>newly </returns>
-		public FilterNode ConvertLeafIntoBranch( EType newBranchType )
+		/// <returns>newly created node made from the original one but now under the newly insterted parent </returns>
+		public FilterNode InsertNewParent( EType newBranchType )
 		{
 			var newChild = new FilterNode( this );
 
@@ -250,7 +263,7 @@ namespace LogicalExprEval
 		///   make and AND/OR brnach node from this one (whatever it was before is forgotten)
 		/// </summary>
 		/// <param name="newBranchType"></param>
-		public void ConvertToBranch( EType newBranchType )
+		protected void ConvertToBranch( EType newBranchType )
 		{
 			NodeType = newBranchType;
 			Condition = null;
@@ -265,7 +278,7 @@ namespace LogicalExprEval
 			if( parent == null ) return null;
 
 			// creates a new leaf and adds it to the node's children
-			var newChild = new FilterNode( nodeType, varList, varIndex, condition, parent);
+			var newChild = new FilterNode( nodeType, varList, varIndex, condition, parent, null, null);
 
 			var index = parent.Children.IndexOf( this );
 			
@@ -277,12 +290,16 @@ namespace LogicalExprEval
 			return newChild;
 		}
 
-		public FilterNode AddNewSibling()
+		public FilterNode DuplicateAsSibling()
 		{
 			return AddNewSibling( EType.Leaf, VarIndex, Variables, new Condition() );
 		}
 
-		public void RemoveLeaf()
+		/// <summary>
+		///   Remove the leaf node.
+		///   If there is just one node left in the branch, remove the branch and replace it with the only remaining node.
+		/// </summary>
+		public void RemoveAndTurnIntoLeafIfOrphaned()
 		{
 			// remove from parent's list
 			var parent = Parent;
@@ -321,7 +338,7 @@ namespace LogicalExprEval
 					{
 						onlyChild.Parent = newParentForOnlyChild;
 
-						parent.InitFrom( onlyChild );
+						parent.ReincarnateFrom( onlyChild );
 					});
 				}
 			}

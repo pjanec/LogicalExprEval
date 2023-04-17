@@ -42,7 +42,7 @@ namespace LogicalExprEval
 					ImGui.SameLine();
 					if( ImGui.Button( "+" ) )
 					{
-						node.AddNewSibling();
+						node.DuplicateAsSibling();
 					}
 				}
 
@@ -51,18 +51,17 @@ namespace LogicalExprEval
 				ImGui.SameLine();
 				if( ImGui.Button( "&&" ) )
 				{
-					var newLeaf = node.ConvertLeafIntoBranch( FilterNode.EType.And );
-					newLeaf.AddNewSibling();
+					var newLeaf = node.InsertNewParent( FilterNode.EType.And );
+					newLeaf.DuplicateAsSibling();
 				}
-
 
 				// add a new node using the OR condition
 				// convert the node into a new OR branch with the node as the first child
 				ImGui.SameLine();
 				if( ImGui.Button( "||" ) )
 				{
-					var newLeaf = node.ConvertLeafIntoBranch( FilterNode.EType.Or );
-					newLeaf.AddNewSibling();
+					var newLeaf = node.InsertNewParent( FilterNode.EType.Or );
+					newLeaf.DuplicateAsSibling();
 				}
 
 				// remove the node
@@ -72,7 +71,7 @@ namespace LogicalExprEval
 					ImGui.SameLine();
 					if( ImGui.Button( "X" ) )
 					{
-						node.RemoveLeaf();
+						node.RemoveAndTurnIntoLeafIfOrphaned();
 					}
 				}
 
