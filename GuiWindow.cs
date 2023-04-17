@@ -109,7 +109,13 @@ namespace LogicalExprEval
 			}
 
 
+			if( ImGui.Button("Clear") )
+			{
+				_rootFN = new FilterNode( FilterNode.EType.Leaf, _vars );
+			}
+
 			FilterNodeRenderer.Draw( _rootFN );
+			_rootFN.ExecuteDeferredChanges();
 
 			var descr = _rootFN.Describe("");
 			ImGui.Text($"Descr: {descr}" );

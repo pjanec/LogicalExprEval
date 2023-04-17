@@ -18,7 +18,7 @@ namespace LogicalExprEval
 	///   
 	///   Up to one tree change operation shall be made during a single loop over Children
 	///   (like for example if drawing the UI using ImGui). Call ExecuteDeferredChanges
-	///   before repeating the loop to make sure the change is properly applied.
+	///   on your TOP LEVEL node (root) after your draw is finished.
 	/// </remarks>
 	public class FilterNode : IFilter
 	{
@@ -72,14 +72,16 @@ namespace LogicalExprEval
 			: this( nodeType, varList, -1, null, null, null, null )
 		{
 			if( nodeType == EType.Leaf )
-				throw new ArgumentException( "This ctor is just for And/Or nodes, not the Leaf" );
+			{
+				Condition = new Condition( typeof(string), Condition.EOperator.Equal, null );
+			}
 		}
 
 		/// <summary>
 		///   Creates leaf node for given variable
 		/// </summary>
 		public FilterNode( List<IVariable> varList, int varIndex, Condition.EOperator oper=Condition.EOperator.Equal, object value=null, bool negate=false )
-			: this( EType.Leaf, varList, varIndex, new Condition( varList[varIndex].Type, oper, value ), null, null, null )
+			: this( EType.Leaf, varList, varIndex, new Condition( varIndex < 0 ? typeof(string) : varList[varIndex].Type, oper, value ), null, null, null )
 		{
 		}
 
@@ -295,11 +297,71 @@ namespace LogicalExprEval
 			return AddNewSibling( EType.Leaf, VarIndex, Variables, new Condition() );
 		}
 
+		public void Remove()
+		{
+			var parent = Parent; // needs to stay local var to be captured by the deferred op lambda
+			if( parent == null ) return;
+
+			parent.DeferredChanges.Add( () =>
+			{
+				parent.Children.Remove( this );
+			});
+		}
+
+		// call only if there is just one child left
+		void RemoveParentOfOnlyChild( FilterNode onlyChild )
+		{
+			var parent = Parent; // this needs to stay local var to be captured by the deferred op lambda
+
+			// the onlychild's parent turns into the onlychild
+			var newParentForOnlyChild = parent.Parent; 
+					
+			parent.DeferredChanges.Add( () =>
+			{
+				onlyChild.Parent = newParentForOnlyChild;
+
+				parent.ReincarnateFrom( onlyChild );
+			});
+		}
+
+
+		/// <summary>
+		///   Remove the leaf node.
+		///   If this was the last child in the branch, remove the branch and replace it with the only remaining node.
+		/// </summary>
+		public void RemoveAndReplaceParentIfLastChild()
+		{
+			// remove from parent's list
+			var parent = Parent;
+			if( parent != null )
+			{
+				// determine if a single child will remain once the deferred removal executes
+				int onlyChildLeftIndex = -1;
+				if( parent.Children.Count == 1 ) // after the removal action executes, there will be no child
+				{
+					onlyChildLeftIndex = 0;
+				}
+
+				parent.DeferredChanges.Add( () =>
+				{
+					parent.Children.Remove( this );
+				});
+
+				// if just one child left, use it instead of the parent
+				if( onlyChildLeftIndex >=0 )
+				{
+					var onlyChild = parent.Children[onlyChildLeftIndex];
+					RemoveParentOfOnlyChild( onlyChild );
+				}
+			}
+		}
+
+
 		/// <summary>
 		///   Remove the leaf node.
 		///   If there is just one node left in the branch, remove the branch and replace it with the only remaining node.
 		/// </summary>
-		public void RemoveAndTurnIntoLeafIfOrphaned()
+		public void RemoveAndTurnIntoLeafIfWouldRemainSingleChild()
 		{
 			// remove from parent's list
 			var parent = Parent;
@@ -330,16 +392,7 @@ namespace LogicalExprEval
 				if( onlyChildLeftIndex >=0 )
 				{
 					var onlyChild = parent.Children[onlyChildLeftIndex];
-
-					// the onlychild's parent turns into the onlychild
-					var newParentForOnlyChild = parent.Parent; 
-					
-					parent.DeferredChanges.Add( () =>
-					{
-						onlyChild.Parent = newParentForOnlyChild;
-
-						parent.ReincarnateFrom( onlyChild );
-					});
+					RemoveParentOfOnlyChild( onlyChild );
 				}
 			}
 		}
@@ -354,17 +407,37 @@ namespace LogicalExprEval
 			return true; // no parent = act as if only child
 		}
 
-		public FilterNode AddChild( FilterNode node )
+		public bool HasChildren => Children == null ? false : Children.Count > 0;
+
+		/// <param name="index">-1 = at the end</param>
+		/// <returns></returns>
+		public FilterNode AddChild( FilterNode node, int index=-1 )
 		{
 			if( Children == null )
 			{
 				Children = new List<FilterNode>();
 			}
-			Children.Add( node );
+			if( index < 0 )
+			{
+				Children.Add( node );
+			}
+			else
+			{
+				Children.Insert( index, node );
+			}
 			
 			node.Parent = this;
 			
 			return node;
 		}
+
+		public FilterNode AddNewEmptyChildLeaf( int varIndex=-1 )
+		{
+			var newChild = new FilterNode( Variables, varIndex );
+			AddChild( newChild, 0 ); // add as first
+			return newChild;
+		}
+
+
 	}
 }

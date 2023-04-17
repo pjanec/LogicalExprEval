@@ -21,8 +21,6 @@ namespace LogicalExprEval
 			if ( node == null ) return;
 
 
-			node.ExecuteDeferredChanges();
-
 			var ww = ImGui.GetWindowWidth();
 			
 			ImGui.PushID( node.Uuid );
@@ -65,24 +63,62 @@ namespace LogicalExprEval
 				}
 
 				// remove the node
-				// if there is just one left in the branch, remove the branch and replace it with the remaining node
-				if( !node.IsOnlyChild() )
+				if( node.Parent != null ) // !node.IsOnlyChild() )
 				{
 					ImGui.SameLine();
 					if( ImGui.Button( "X" ) )
 					{
-						node.RemoveAndTurnIntoLeafIfOrphaned();
+						node.RemoveAndTurnIntoLeafIfWouldRemainSingleChild();
+						//node.RemoveAndReplaceParentIfLastChild();
 					}
 				}
 
 			}
 			else // draw tree
 			{
-				bool opened = ImGui.TreeNodeEx( node.NodeType.ToString(), ImGuiTreeNodeFlags.DefaultOpen );
+				bool opened = ImGui.TreeNodeEx( node.NodeType.ToString(), ImGuiTreeNodeFlags.DefaultOpen | ImGuiTreeNodeFlags.AllowItemOverlap );
+
+				if( node.NodeType!=FilterNode.EType.Leaf )
+				{
+					ImGui.SameLine();
+					if( ImGui.Button( "+" ) )
+					{
+						node.AddNewEmptyChildLeaf();
+					}
+				}
+
+				//// add a new node using the AND condition
+				//// this converts the node into a new AND branch with the original node as the first child
+				//ImGui.SameLine();
+				//if( ImGui.Button( "&&" ) )
+				//{
+				//	var newBranch = new FilterNode( FilterNode.EType.And, node.Variables );
+				//	node.AddChild( newBranch, 0 );
+				//}
+
+				//// add a new node using the OR condition
+				//// convert the node into a new OR branch with the node as the first child
+				//ImGui.SameLine();
+				//if( ImGui.Button( "||" ) )
+				//{
+				//	var newBranch = new FilterNode( FilterNode.EType.Or, node.Variables );
+				//	node.AddChild( newBranch, 0 );
+				//}
+
+				// remove the node
+				if( node.Parent != null && !node.HasChildren ) // !node.IsOnlyChild() )
+				{
+					ImGui.SameLine();
+					if( ImGui.Button( "X" ) )
+					{
+						//node.RemoveAndTurnIntoLeafIfWouldRemainSingleChild();
+						node.Remove();
+					}
+				}
 
 				if( opened )
 				{
-					//if( node.Children != null )
+					if( node.Children != null )
 					{
 						foreach( var child in node.Children )
 						{
