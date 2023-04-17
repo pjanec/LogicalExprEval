@@ -42,25 +42,43 @@ namespace LogicalExprEval
 			//	new VariableWithConstValue( "var2", "Variable2_int", typeof(Int64), 42 ),
 			//};
 
-			// statically compiled members
-			_vars = new List<IVariable>()
-			{
-				new VariableWithValueGetter( "var1", "Field1", typeof(String), (object source ) => ((MyData)source).Field1 ),
-				new VariableWithMemberGetter( "var2", "Field2", typeof(Int64), (object source ) => ((MyData)source).Field2 ),
-			};
-
-			//// fastreflect generated members
+			//// statically compiled members
 			//_vars = new List<IVariable>()
 			//{
-			//	new VariableWithMemberGetter( "var1", "Field1", typeof(String), Reflect.FieldGetter(typeof(MyData), "Field1") ),
-			//	new VariableWithMemberGetter( "var2", "Field2", typeof(Int64), Reflect.FieldGetter(typeof(MyData), "Field2") ),
+			//	new VariableWithValueGetter( "var1", "Field1", typeof(String), (object source ) => ((MyData)source).Field1 ),
+			//	new VariableWithMemberGetter( "var2", "Field2", typeof(Int64), (object source ) => ((MyData)source).Field2 ),
 			//};
 
+			// fastreflect generated members
+			_vars = new List<IVariable>()
+			{
+				new VariableWithMemberGetter( "var1", "Field1", typeof(String), Reflect.FieldGetter(typeof(MyData), "Field1") ),
+				new VariableWithMemberGetter( "var2", "Field2", typeof(Int64), Reflect.FieldGetter(typeof(MyData), "Field2") ),
+			};
 
-			_rootFN = new FilterNode( FilterNode.EType.Leaf, -1, _vars, new Condition( typeof(String) ) );
+
+			//_rootFN = new FilterNode( FilterNode.EType.Leaf, _vars );
+			_rootFN = CreateTree();
+
+
 
 			Benchmark();
 
+		}
+
+		FilterNode CreateTree()
+		{
+			var root = new FilterNode( FilterNode.EType.Or, _vars );
+			{
+				var n1 = root.AddChild( new FilterNode( _vars, 0, Condition.EOperator.StartsWith, "he" ) );
+
+				var n2 = root.AddChild( new FilterNode( FilterNode.EType.And, _vars ) );
+				{
+					n2.AddChild( new FilterNode( _vars, 0, Condition.EOperator.Equal, "hello" ) );
+					n2.AddChild( new FilterNode( _vars, 1, Condition.EOperator.Equal, 42 ) );
+				}
+			}
+			return root;
 		}
 
 		protected override void Dispose(bool disposing)
@@ -110,10 +128,9 @@ namespace LogicalExprEval
 
 		void Benchmark()
 		{
-			var root = new FilterNode( FilterNode.EType.Or, 0, _vars, null );
-			
-			//new FilterNode( FilterNode.EType.Leaf, 0, _vars, new Condition( typeof(String), Condition.EOperator.Equal ) );
+			var root = CreateTree();
 
+			Console.WriteLine($"{root.Describe()}");
 
 			var dataSample = new MyData()
 			{

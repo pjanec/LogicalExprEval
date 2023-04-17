@@ -83,10 +83,13 @@ namespace LogicalExprEval
 
 				if( opened )
 				{
-					foreach( var child in node.Children )
+					//if( node.Children != null )
 					{
-						Draw( child ); // warnign this can change node.Children as well as node.Parent
-						// Such changes need to be deferred after Draw()
+						foreach( var child in node.Children )
+						{
+							Draw( child ); // warnign this can change node.Children as well as node.Parent
+							// Such changes need to be deferred after Draw()
+						}
 					}
 
 					ImGui.TreePop();
@@ -112,7 +115,7 @@ namespace LogicalExprEval
 					var v = node.Variables[i];
 					if( ImGui.Selectable( v.DisplayName, i == node.VarIndex ) )
 					{
-						node.SelectVar( i );
+						node.SelectVariable( i );
 					}
 				}
 				ImGui.EndCombo();

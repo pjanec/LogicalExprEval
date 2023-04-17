@@ -40,7 +40,7 @@ namespace LogicalExprEval
 		/// <summary> Shall we negate the result of the operator comparison </summary>
 		public bool Negate;
 
-		public Condition( System.Type valueType = null, EOperator oper = EOperator.Equal )
+		public Condition( System.Type valueType = null, EOperator oper = EOperator.Equal, object value=null, bool negate = false )
 		{
 			this.ValueType = valueType;
 
@@ -51,6 +51,8 @@ namespace LogicalExprEval
 			}
 
 			this.Operator = oper;
+			this.Value = value;
+			this.Negate = negate;
 		}
 
 		public override string ToString()

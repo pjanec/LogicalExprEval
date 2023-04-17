@@ -1,4 +1,5 @@
-﻿using System.Xml.Linq;
+﻿using Newtonsoft.Json.Linq;
+using System.Xml.Linq;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 namespace LogicalExprEval
@@ -45,7 +46,7 @@ namespace LogicalExprEval
 			return $"[{NodeType}] {Describe(null)}";
 		}
 
-		public FilterNode( EType nodeType, int varIndex, List<IVariable> varList, Condition condition, FilterNode parent=null )
+		protected FilterNode( EType nodeType, List<IVariable> varList, int varIndex, Condition condition, FilterNode parent )
 		{
 			NodeType = nodeType;
 			VarIndex = varIndex;
@@ -53,31 +54,35 @@ namespace LogicalExprEval
 			Condition = condition;
 			Parent = parent;
 			Children = null;
+			//DeferredChanges = deferredChanges;
 		}
 
 		/// <summary>
-		///  Turns this node into a copy of the other node; The other node is expected to be abandoned.
+		///   Creates And/Or node
 		/// </summary>
-		public void InitFrom( FilterNode other )
+		public FilterNode( EType nodeType, List<IVariable> varList )
+			: this( nodeType, varList, -1, null, null )
 		{
-			NodeType = other.NodeType;
-			VarIndex = other.VarIndex;
-			Variables = other.Variables;
-			Condition = other.Condition;
-			Parent = other.Parent;
-			Children = other.Children;
-			DeferredChanges = other.DeferredChanges;
-
-			// reparent the newly acquired children to us
-			if( Children != null )
-			{
-				foreach( var child in Children )
-				{
-					child.Parent = this;
-				}
-			}
-
+			if( nodeType == EType.Leaf )
+				throw new ArgumentException( "This ctor is just for And/Or nodes, not the Leaf" );
 		}
+
+		/// <summary>
+		///   Creates leaf node
+		/// </summary>
+		public FilterNode( List<IVariable> varList, int varIndex, Condition.EOperator oper=Condition.EOperator.Equal, object value=null, bool negate=false )
+			: this( EType.Leaf, varList, varIndex, new Condition( varList[varIndex].Type, oper, value ), null )
+		{
+		}
+
+		/// <summary>
+		///   Shallow clone
+		/// </summary>
+		protected FilterNode( FilterNode other )
+			: this( other.NodeType, other.Variables, other.VarIndex, other.Condition, other.Parent )
+		{
+		}
+
 
 		public bool Passed( object dataSample )
 		{
@@ -184,7 +189,7 @@ namespace LogicalExprEval
 			}
 		}
 
-		public void SelectVar( int varIndex )
+		public void SelectVariable( int varIndex )
 		{
 			VarIndex = varIndex;
 
@@ -196,19 +201,63 @@ namespace LogicalExprEval
 			}
 		}
 
-		public FilterNode ConvertLeafIntoBranch( FilterNode.EType newBranchType )
+		protected void ShallowCopyFrom( FilterNode other )
 		{
-			var newChild = new FilterNode( NodeType, VarIndex, Variables, Condition, this );
+			NodeType = other.NodeType;
+			VarIndex = other.VarIndex;
+			Variables = other.Variables;
+			Condition = other.Condition;
+			Parent = other.Parent;
+			Children = other.Children;
+			DeferredChanges = other.DeferredChanges;
+		}
 
-			// convert the node into a new branch with the node as the first child
-			NodeType = newBranchType;
-			Children = new List<FilterNode>() { newChild };
-			Condition = null;
-			VarIndex = -1;
+		/// <summary>
+		///  Turns this node into a copy of the other node; The other node is expected to be abandoned.
+		/// </summary>
+		protected void InitFrom( FilterNode other )
+		{
+			ShallowCopyFrom( other );
 
-			return newChild;
+			// reparent the newly acquired children to us
+			if( Children != null )
+			{
+				foreach( var child in Children )
+				{
+					child.Parent = this;
+				}
+			}
 
 		}
+
+		/// <summary>
+		///		Converts the node into a new branch with the node as the first child
+		///		(basically inserts a branch node above this one)
+		/// </summary>
+		/// <param name="newBranchType">AND/OR node</param>
+		/// <returns>newly </returns>
+		public FilterNode ConvertLeafIntoBranch( EType newBranchType )
+		{
+			var newChild = new FilterNode( this );
+
+			ConvertToBranch( newBranchType );
+			AddChild( newChild );
+
+			return newChild;
+		}
+
+		/// <summary>
+		///   make and AND/OR brnach node from this one (whatever it was before is forgotten)
+		/// </summary>
+		/// <param name="newBranchType"></param>
+		public void ConvertToBranch( EType newBranchType )
+		{
+			NodeType = newBranchType;
+			Condition = null;
+			VarIndex = -1;
+			Children = null;
+		}
+
 
 		public FilterNode AddNewSibling( EType nodeType, int varIndex, List<IVariable> varList, Condition condition )
 		{
@@ -216,7 +265,7 @@ namespace LogicalExprEval
 			if( parent == null ) return null;
 
 			// creates a new leaf and adds it to the node's children
-			var newChild = new FilterNode( nodeType, varIndex, varList, condition, parent);
+			var newChild = new FilterNode( nodeType, varList, varIndex, condition, parent);
 
 			var index = parent.Children.IndexOf( this );
 			
@@ -286,6 +335,19 @@ namespace LogicalExprEval
 				return parent.Children.Count == 1;
 			}
 			return true; // no parent = act as if only child
+		}
+
+		public FilterNode AddChild( FilterNode node )
+		{
+			if( Children == null )
+			{
+				Children = new List<FilterNode>();
+			}
+			Children.Add( node );
+			
+			node.Parent = this;
+			
+			return node;
 		}
 	}
 }
