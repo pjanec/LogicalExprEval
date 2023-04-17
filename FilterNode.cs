@@ -1,4 +1,5 @@
-﻿using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
+﻿using System.Xml.Linq;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 
 namespace LogicalExprEval
 {
@@ -165,5 +166,126 @@ namespace LogicalExprEval
 			return result;
 		}
 
+		public void ExecuteDeferredChanges()
+		{
+			foreach (var action in DeferredChanges)
+			{
+				action();
+			}
+			DeferredChanges.Clear();
+
+			// recurse to children to be sure all changes are applied
+			if( Children != null )
+			{
+				foreach( var child in Children )
+				{
+					child.ExecuteDeferredChanges();
+				}
+			}
+		}
+
+		public void SelectVar( int varIndex )
+		{
+			VarIndex = varIndex;
+
+			// retype the value stored in the condition to match the new variable type
+			if( VarIndex >= 0 )
+			{
+				var v = Variables[VarIndex];
+				Condition.ValueType = v.Type;
+			}
+		}
+
+		public FilterNode ConvertLeafIntoBranch( FilterNode.EType newBranchType )
+		{
+			var newChild = new FilterNode( NodeType, VarIndex, Variables, Condition, this );
+
+			// convert the node into a new branch with the node as the first child
+			NodeType = newBranchType;
+			Children = new List<FilterNode>() { newChild };
+			Condition = null;
+			VarIndex = -1;
+
+			return newChild;
+
+		}
+
+		public FilterNode AddNewSibling( EType nodeType, int varIndex, List<IVariable> varList, Condition condition )
+		{
+			var parent = Parent;
+			if( parent == null ) return null;
+
+			// creates a new leaf and adds it to the node's children
+			var newChild = new FilterNode( nodeType, varIndex, varList, condition, parent);
+
+			var index = parent.Children.IndexOf( this );
+			
+			parent.DeferredChanges.Add( () =>
+			{
+				parent.Children.Insert( index+1, newChild );
+			});
+
+			return newChild;
+		}
+
+		public FilterNode AddNewSibling()
+		{
+			return AddNewSibling( EType.Leaf, VarIndex, Variables, new Condition() );
+		}
+
+		public void RemoveLeaf()
+		{
+			// remove from parent's list
+			var parent = Parent;
+			if( parent != null )
+			{
+
+				// determine what child will remain once the deferred removal executes
+				int onlyChildLeftIndex = -1;
+				if( parent.Children.Count == 2 ) // after the removal action executes, there will be just 1...
+				{
+					var childToRemoveIndex = parent.Children.IndexOf( this );
+					if( childToRemoveIndex == 0 ) // removing first one
+					{
+						onlyChildLeftIndex = 1; // second one will remain
+					}
+					else // removing second one
+					{
+						onlyChildLeftIndex = 0; // first one will remain
+					}
+				}
+
+				parent.DeferredChanges.Add( () =>
+				{
+					parent.Children.Remove( this );
+				});
+
+				// if just one child left, use it instead of the parent
+				if( onlyChildLeftIndex >=0 )
+				{
+					var onlyChild = parent.Children[onlyChildLeftIndex];
+
+					// the onlychild's parent turns into the onlychild
+					var newParentForOnlyChild = parent.Parent; 
+					
+					parent.DeferredChanges.Add( () =>
+					{
+						onlyChild.Parent = newParentForOnlyChild;
+
+						parent.InitFrom( onlyChild );
+					});
+				}
+			}
+		}
+
+		public bool IsOnlyChild()
+		{
+			var parent = this.Parent;
+			if( parent != null )
+			{
+				return parent.Children.Count == 1;
+			}
+			return true; // no parent = act as if only child
+		}
 	}
 }

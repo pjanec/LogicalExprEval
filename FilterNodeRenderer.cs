@@ -21,7 +21,7 @@ namespace LogicalExprEval
 			if ( node == null ) return;
 
 
-			ExecuteDeferredChanges( node );
+			node.ExecuteDeferredChanges();
 
 			var ww = ImGui.GetWindowWidth();
 			
@@ -42,7 +42,7 @@ namespace LogicalExprEval
 					ImGui.SameLine();
 					if( ImGui.Button( "+" ) )
 					{
-						AddNewSiblingLeaf( node );
+						node.AddNewSibling();
 					}
 				}
 
@@ -51,8 +51,8 @@ namespace LogicalExprEval
 				ImGui.SameLine();
 				if( ImGui.Button( "&&" ) )
 				{
-					var newLeaf = ConvertLeafIntoBranch( node, FilterNode.EType.And );
-					AddNewSiblingLeaf( newLeaf );
+					var newLeaf = node.ConvertLeafIntoBranch( FilterNode.EType.And );
+					newLeaf.AddNewSibling();
 				}
 
 
@@ -61,18 +61,18 @@ namespace LogicalExprEval
 				ImGui.SameLine();
 				if( ImGui.Button( "||" ) )
 				{
-					var newLeaf = ConvertLeafIntoBranch( node, FilterNode.EType.Or );
-					AddNewSiblingLeaf( newLeaf );
+					var newLeaf = node.ConvertLeafIntoBranch( FilterNode.EType.Or );
+					newLeaf.AddNewSibling();
 				}
 
 				// remove the node
 				// if there is just one left in the branch, remove the branch and replace it with the remaining node
-				if( !IsOnlyChild( node ) )
+				if( !node.IsOnlyChild() )
 				{
 					ImGui.SameLine();
 					if( ImGui.Button( "X" ) )
 					{
-						RemoveLeaf( node );
+						node.RemoveLeaf();
 					}
 				}
 
@@ -99,91 +99,6 @@ namespace LogicalExprEval
 		}
 		
 
-		static bool IsOnlyChild( FilterNode node )
-		{
-			var parent = node.Parent;
-			if( parent != null )
-			{
-				return parent.Children.Count == 1;
-			}
-			return true; // no parent = act as if only child
-		}
-
-		static void AddNewSiblingLeaf( FilterNode node )
-		{
-			var parent = node.Parent;
-			if( parent == null ) return;
-
-			// creates a new leaf and adds it to the node's children
-			var newChild = new FilterNode( FilterNode.EType.Leaf, node.VarIndex, node.Variables, new Condition(), parent);
-
-			var index = parent.Children.IndexOf( node );
-			
-			parent.DeferredChanges.Add( () =>
-			{
-				parent.Children.Insert( index+1, newChild );
-			});
-		}
-
-		static void RemoveLeaf( FilterNode node )
-		{
-			// remove from parent's list
-			var parent = node.Parent;
-			if( parent != null )
-			{
-
-				// determine what child will remain once the deferred removal executes
-				int onlyChildLeftIndex = -1;
-				if( parent.Children.Count == 2 ) // after the removal action executes, there will be just 1...
-				{
-					var childToRemoveIndex = parent.Children.IndexOf( node );
-					if( childToRemoveIndex == 0 ) // removing first one
-					{
-						onlyChildLeftIndex = 1; // second one will remain
-					}
-					else // removing second one
-					{
-						onlyChildLeftIndex = 0; // first one will remain
-					}
-				}
-
-				parent.DeferredChanges.Add( () =>
-				{
-					parent.Children.Remove( node );
-				});
-
-				// if just one child left, use it instead of the parent
-				if( onlyChildLeftIndex >=0 )
-				{
-					var onlyChild = parent.Children[onlyChildLeftIndex];
-
-					// the onlychild's parent turns into the onlychild
-					var newParentForOnlyChild = parent.Parent; 
-					
-					parent.DeferredChanges.Add( () =>
-					{
-						onlyChild.Parent = newParentForOnlyChild;
-
-						parent.InitFrom( onlyChild );
-					});
-				}
-			}
-		}
-
-		static FilterNode ConvertLeafIntoBranch( FilterNode node, FilterNode.EType newBranchType )
-		{
-			var newChild = new FilterNode( node.NodeType, node.VarIndex, node.Variables, node.Condition, node );
-
-			// convert the node into a new branch with the node as the first child
-			node.NodeType = newBranchType;
-			node.Children = new List<FilterNode>() { newChild };
-			node.Condition = null;
-			node.VarIndex = -1;
-
-			return newChild;
-
-		}
-
 		static void DrawVar( FilterNode node )
 		{
 			IVariable selectedVar = node.VarIndex < 0 ? null : node.Variables[node.VarIndex];
@@ -197,30 +112,10 @@ namespace LogicalExprEval
 					var v = node.Variables[i];
 					if( ImGui.Selectable( v.DisplayName, i == node.VarIndex ) )
 					{
-						node.VarIndex = i;
-						// retype the value stored in the condition to match the new variable type
-						node.Condition.ValueType = v.Type;
+						node.SelectVar( i );
 					}
 				}
 				ImGui.EndCombo();
-			}
-		}
-
-		static void ExecuteDeferredChanges( FilterNode node )
-		{
-			foreach (var action in node.DeferredChanges)
-			{
-				action();
-			}
-			node.DeferredChanges.Clear();
-
-			// recurse to children to be sure all changes are applied
-			if( node.Children != null )
-			{
-				foreach( var child in node.Children )
-				{
-					ExecuteDeferredChanges( child );
-				}
 			}
 		}
 

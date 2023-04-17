@@ -110,7 +110,9 @@ namespace LogicalExprEval
 
 		void Benchmark()
 		{
-			_rootFN = new FilterNode( FilterNode.EType.Leaf, 0, _vars, new Condition( typeof(String), Condition.EOperator.Equal ) );
+			var root = new FilterNode( FilterNode.EType.Or, 0, _vars, null );
+			
+			//new FilterNode( FilterNode.EType.Leaf, 0, _vars, new Condition( typeof(String), Condition.EOperator.Equal ) );
 
 
 			var dataSample = new MyData()
@@ -124,7 +126,7 @@ namespace LogicalExprEval
 
 			for(int i=0; i < 1000000; i++)
 			{
-				var result = _rootFN.Passed( dataSample );
+				var result = root.Passed( dataSample );
 			}
 			Console.WriteLine($"Took {sw.ElapsedMilliseconds}ms");
 
