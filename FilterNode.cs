@@ -3,12 +3,14 @@
 namespace LogicalExprEval
 {
 	/// <summary>
-	///   A node of a logical expression tree combining multiple filter conditions using AND/OR operators.
+	///   A node of a logical expression tree combining multiple conditions using AND/OR operators.
+	///   FilterNode gets the source value (to evaluate the conditions with) from an IVariable
+	///   object pointed by VarIndex in an array of variables.
 	/// </summary>
 	/// <remarks>
-	///   Note: each node can be individually negated => we do not need the negation operator.
+	///   Note: Each node can be individually negated => we do not need the negation operator.
 	/// </remarks>
-	public class FilterNode	: IFilter
+	public class FilterNode : IFilter
 	{
 		public enum EType
 		{
@@ -19,7 +21,7 @@ namespace LogicalExprEval
 
 		public EType NodeType;
 		public FilterNode Parent;
-		public List<FilterNode> Children; // subnodes, used for 
+		public List<FilterNode> Children; // subnodes, used just for AND/OR nodes (null for leaf nodes)
 		
 		public int VarIndex; // what variable to read the current value from; index to Variables
 		public Condition Condition; // how to compare the variable value
@@ -76,55 +78,48 @@ namespace LogicalExprEval
 
 		}
 
-		// implementation of the IFilter interface
-		public bool Passed( object notUsed )
-		{
-			// as we take our value from the variable, we do not need the arg
-			return Passed();
-		}
-
-		public bool Passed()
+		public bool Passed( object dataSample )
 		{
 			switch( NodeType )
 			{
 				case EType.Leaf:
-					return EvalLeaf();
+					return EvalLeaf( dataSample );
 				case EType.And:
-					return EvalAnd();
+					return EvalAnd( dataSample );
 				case EType.Or:
-					return EvalOr();
+					return EvalOr( dataSample );
 			}
 			throw new Exception("Unknown node type");
 		}
 
-		bool EvalLeaf()
+		bool EvalLeaf( object dataSample )
 		{
-			object val = VarIndex < 0 ? null : Variables[VarIndex].Value;
+			object val = VarIndex < 0 ? null : Variables[VarIndex].GetValue( dataSample );
 			return Condition.Passed( val );
 		}
 
 
-		bool EvalAnd()
+		bool EvalAnd( object dataSample )
 		{
 			bool result = true;
 			if( Children != null)
 			{
 				foreach( var item in Children)
 				{
-					result = result && item.Passed();
+					result = result && item.Passed( dataSample );
 				}
 			}
 			return result;
 		}
 
-		bool EvalOr()
+		bool EvalOr( object dataSample )
 		{
 			bool result = false;
 			if( Children != null)
 			{
 				foreach( var item in Children)
 				{
-					result = result || item.Passed();
+					result = result || item.Passed( dataSample);
 				}
 			}
 			return result;
@@ -132,28 +127,28 @@ namespace LogicalExprEval
 
 
 		// implementation of the IFilter interface
-		public string Describe( string argDescr )
+		public string Describe( string varPrefix="" )
 		{
 			switch( NodeType )
 			{
 				case EType.Leaf:
 				{
 					string varName = VarIndex < 0 ? "<none>" : Variables[VarIndex].DisplayName;
-					return Condition.Describe( varName );
+					return Condition.Describe( varPrefix+varName );
 				}
 				case EType.And:
 				{
-					return Describe( argDescr, "AND" );
+					return Describe( varPrefix, "AND" );
 				}
 				case EType.Or:
 				{
-					return Describe( argDescr, "OR" );
+					return Describe( varPrefix, "OR" );
 				}
 			}
 			throw new Exception("Unknown node type");
 		}
 
-		string Describe( string argDescr, string operName )
+		string Describe( string varPrefix, string operName )
 		{
 			string result = "";
 			if( Children != null)
@@ -164,7 +159,7 @@ namespace LogicalExprEval
 					{
 						result += " "+operName+" ";
 					}
-					result += "("+Children[i].Describe( argDescr )+")";
+					result += "("+Children[i].Describe(varPrefix)+")";
 				}
 			}
 			return result;

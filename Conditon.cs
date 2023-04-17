@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace LogicalExprEval
 {
 	/// <summary>
-	///   Compares the stored value to the value of the argument of Evaluate() method
+	///   Compares the stored value to the value of the argument of Passed(data) method
 	///   using selected comparison operator. Optionally performs the negation of the result.
 	/// </summary>
 	public class Condition : IFilter
@@ -82,37 +82,38 @@ namespace LogicalExprEval
 			return value.ToString();
 		}
 
-		public string Describe( string argDesc )
+		// IFilter implem
+		public string Describe( string varName )
 		{
 			string text = "";
 			switch( Operator)
 			{
 				case EOperator.Equal:
-					text = $"{argDesc} == {Describe(Value)}";
+					text = $"{varName} == {Describe(Value)}";
 					break;
 				case EOperator.NotEqual:
-					text = $"{argDesc} != {Describe(Value)}";
+					text = $"{varName} != {Describe(Value)}";
 					break;
 				case EOperator.GreaterThan:
-					text = $"{argDesc} > {Describe(Value)}";
+					text = $"{varName} > {Describe(Value)}";
 					break;
 				case EOperator.GreaterThanOrEqual:
-					text = $"{argDesc} >= {Describe(Value)}";
+					text = $"{varName} >= {Describe(Value)}";
 					break;
 				case EOperator.LessThan:
-					text = $"{argDesc} < {Describe(Value)}";
+					text = $"{varName} < {Describe(Value)}";
 					break;
 				case EOperator.LessThanOrEqual:
-					text = $"{argDesc} <= {Describe(Value)}";
+					text = $"{varName} <= {Describe(Value)}";
 					break;
 				case EOperator.StartsWith:
-					text = $"{argDesc} starts with {Describe(Value)}";
+					text = $"{varName} starts with {Describe(Value)}";
 					break;
 				case EOperator.EndsWith:
-					text = $"{argDesc} ends with {Describe(Value)}";
+					text = $"{varName} ends with {Describe(Value)}";
 					break;
 				case EOperator.Contains:
-					text = $"{argDesc} contains {Describe(Value)}";
+					text = $"{varName} contains {Describe(Value)}";
 					break;
 			}
 			if( Negate ) text = $"!({text})";
@@ -127,7 +128,6 @@ namespace LogicalExprEval
 		public bool Passed(object arg)
 		{
 			bool result = false;
-			var compArg = (arg as IComparable);
 
 			// only direct equality check between nulls succeedes
 			if( arg == null && Value == null )
@@ -153,6 +153,7 @@ namespace LogicalExprEval
 				}
 			}
 
+			var compArg = (arg as IComparable);
 			if( compArg == null )
 				return false;
 

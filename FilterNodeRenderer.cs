@@ -11,6 +11,9 @@ using ImGuiNET;
 namespace LogicalExprEval
 {
 
+	/// <summary>
+	/// Draws FilterNode using ImGui.
+	/// </summary>
 	public static class FilterNodeRenderer
 	{
 		public static void Draw( FilterNode node )

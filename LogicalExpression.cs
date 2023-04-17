@@ -11,14 +11,14 @@ namespace LogicalExprEval
 		/// <summary>
 		///    Checks if given value passes the filter
 		/// </summary>
-		/// <param name="arg"> the value passed to the condition of the filter </param>
+		/// <param name="value"> the value passed to the condition of the filter </param>
 		/// <returns> true = the arg value passed the filter condition </returns>
-		bool Passed( object arg );
+		bool Passed( object value );
 
 		/// <summary> Provides human readable form of the filter expression </summary>
-		/// <param name="argDescr"> the text used in place of the variable whose value is passed to Evalute() </param>
+		/// <param name="varName"> the text used in place of the variable whose value is passed to Evalute() </param>
 		/// <returns></returns>
-		string Describe( string argDescr );
+		string Describe( string varName );
 	}
 
 	public class AndFilterContainer : IFilter
@@ -32,20 +32,20 @@ namespace LogicalExprEval
 
 		public override string ToString() => Describe("x");
 
-		public bool Passed( object arg )
+		public bool Passed( object value )
 		{
 			bool result = true;
 			if( _list != null)
 			{
 				foreach( var item in _list)
 				{
-					result = result && item.Passed( arg );
+					result = result && item.Passed( value );
 				}
 			}
 			return result;
 		}
 
-		public string Describe( string argDescr )
+		public string Describe( string varName )
 		{
 			string result = "";
 			if( _list != null)
@@ -56,7 +56,7 @@ namespace LogicalExprEval
 					{
 						result += " AND ";
 					}
-					result += "("+_list[i].Describe( argDescr )+")";
+					result += "("+_list[i].Describe( varName )+")";
 				}
 			}
 			return result;
@@ -74,20 +74,20 @@ namespace LogicalExprEval
 
 		public override string ToString() => Describe("x");
 
-		public bool Passed( object arg )
+		public bool Passed( object value )
 		{
 			bool result = false;
 			if( _list != null)
 			{
 				foreach( var item in _list)
 				{
-					result = result || item.Passed( arg );
+					result = result || item.Passed( value );
 				}
 			}
 			return result;
 		}
 
-		public string Describe( string argDescr )
+		public string Describe( string varName )
 		{
 			string result = "";
 			if( _list != null)
@@ -98,7 +98,7 @@ namespace LogicalExprEval
 					{
 						result += " OR ";
 					}
-					result += "("+_list[i].Describe( argDescr )+")";
+					result += "("+_list[i].Describe( varName )+")";
 				}
 			}
 			return result;

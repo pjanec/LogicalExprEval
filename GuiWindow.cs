@@ -7,6 +7,8 @@ using System.Drawing;
 using ImGuiNET;
 using System.Threading;
 using System.Diagnostics.CodeAnalysis;
+using Fasterflect;
+using System.Diagnostics;
 
 namespace LogicalExprEval
 {
@@ -19,17 +21,46 @@ namespace LogicalExprEval
 		FilterNode _rootFN;
 		List<IVariable> _vars;
 
+
+
+		// sample data structure we are using Fastreflect for retrieving the members
+		class MyData
+		{
+			public string Field1;
+			public int Field2;
+		}
+
+
 		public GuiWindow( ImGuiWindow wnd )
 		{
 			_wnd = wnd;
 			//_menuRenderer = new GuiWinMenuRenderer( _wnd, _reflStates );
-					
+
+			//_vars = new List<IVariable>()
+			//{
+			//	new VariableWithConstValue( "var1", "Variable1_str", typeof(String), "hello" ),
+			//	new VariableWithConstValue( "var2", "Variable2_int", typeof(Int64), 42 ),
+			//};
+
+			// statically compiled members
 			_vars = new List<IVariable>()
 			{
-				new Variable( "var1", "Variable1_str", typeof(String), "hello" ),
-				new Variable( "var2", "Variable2_int", typeof(Int64), 42 ),
+				new VariableWithValueGetter( "var1", "Field1", typeof(String), (object source ) => ((MyData)source).Field1 ),
+				new VariableWithMemberGetter( "var2", "Field2", typeof(Int64), (object source ) => ((MyData)source).Field2 ),
 			};
+
+			//// fastreflect generated members
+			//_vars = new List<IVariable>()
+			//{
+			//	new VariableWithMemberGetter( "var1", "Field1", typeof(String), Reflect.FieldGetter(typeof(MyData), "Field1") ),
+			//	new VariableWithMemberGetter( "var2", "Field2", typeof(Int64), Reflect.FieldGetter(typeof(MyData), "Field2") ),
+			//};
+
+
 			_rootFN = new FilterNode( FilterNode.EType.Leaf, -1, _vars, new Condition( typeof(String) ) );
+
+			Benchmark();
+
 		}
 
 		protected override void Dispose(bool disposing)
@@ -62,13 +93,43 @@ namespace LogicalExprEval
 
 			FilterNodeRenderer.Draw( _rootFN );
 
-			var descr = _rootFN.Describe(null);
+			var descr = _rootFN.Describe("");
 			ImGui.Text($"Descr: {descr}" );
 			
 			
-			var result = _rootFN.Passed(null);
+			var dataSample = new MyData()
+			{
+				Field1 = "hello",
+				Field2 = 42,
+			};
+
+			var result = _rootFN.Passed( dataSample );
+
 			ImGui.Text($"Result: {result}" );
 		}
+
+		void Benchmark()
+		{
+			_rootFN = new FilterNode( FilterNode.EType.Leaf, 0, _vars, new Condition( typeof(String), Condition.EOperator.Equal ) );
+
+
+			var dataSample = new MyData()
+			{
+				Field1 = "hello",
+				Field2 = 42,
+			};
+
+			var sw = new Stopwatch();
+			sw.Start();
+
+			for(int i=0; i < 1000000; i++)
+			{
+				var result = _rootFN.Passed( dataSample );
+			}
+			Console.WriteLine($"Took {sw.ElapsedMilliseconds}ms");
+
+		}
+
 		
 
 
